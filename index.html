@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ĐẠT AP - Slate Chat</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f0f12;--panel:#18181c;--chat-bg:#121215;--line:#2a2a30;
+  --tx:#f0f0f5;--mute:#8f93a2;--acc:#3b4252;--acc-hover:#4c566a;
+  --msg-in:#26262e;--msg-out:#3b4252;--online:#00b5ad;--err:#e41e3f;
+}
+
+body.theme-default { --msg-out: #3b4252; --chat-bg: #121215; }
+body.theme-neon { --msg-out: #007799; --chat-bg: #05131a; }
+body.theme-purple { --msg-out: #5b2c6f; --chat-bg: #150a1a; }
+body.theme-emerald { --msg-out: #1e5631; --chat-bg: #0a180e; }
+body.theme-rose { --msg-out: #7b1fa2; --chat-bg: #1a0814; }
+
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Roboto',sans-serif}
+html,body{height:100%;background-color:var(--bg);color:var(--tx);font-size:15px;line-height:1.45}
+body{display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+[hidden]{display:none!important}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:var(--acc);color:#fff;border-radius:10px;padding:10px 16px;font-weight:500;transition:background .2s}
+button:hover{background:var(--acc-hover)}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--tx)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--online);outline-offset:2px}
+input{background:#121215;border:1px solid var(--line);border-radius:10px;padding:11px 14px;width:100%;color:#fff}
+.view{width:100%;height:100%}
+.center{display:grid;place-content:center;gap:14px;height:100%;padding:24px;width:min(380px,100%);margin:auto;text-align:center}
+.logo{font-size:34px;font-weight:700;letter-spacing:-.5px;color:#fff}
+.sub{color:var(--mute)}
+.err{color:var(--err);min-height:20px;font-size:13px}
+.ok{color:var(--online);min-height:20px;font-size:13px}
+button.link{background:none;color:var(--mute);text-decoration:underline;padding:4px;font-weight:400}
+.reg-only{display:none}
+#vLogin.reg .reg-only{display:block}
+#vLogin.reg .log-only{display:none}
+
+.av-container{position:relative;display:inline-block;flex:none}
+.av{width:44px;height:44px;border-radius:50%;background:#26262e;object-fit:cover;display:grid;place-items:center;font-weight:700;flex:none;overflow:hidden;border:1px solid var(--line)}
+.av.big{width:96px;height:96px;font-size:34px;margin:auto;cursor:pointer}
+.online-dot{position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;background:#555;border:2px solid var(--panel)}
+.online-dot.on{background:var(--online)}
+
+.dots{display:flex;gap:14px;justify-content:center}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--mute)}
+.dots i.on{background:var(--online);border-color:var(--online)}
+#pinIn{text-align:center;letter-spacing:12px;font-size:22px}
+.shake{animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+.messenger-container{width:96%;max-width:1280px;height:92vh;background:var(--panel);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.5);display:flex;overflow:hidden;border:1px solid var(--line)}
+
+.chat-area{flex:1;display:flex;flex-direction:column;position:relative;min-width:0;min-height:0;background-color:var(--chat-bg)}
+.chat-header{height:68px;padding:0 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--panel);z-index:10;flex:none}
+.chat-header-user{display:flex;align-items:center;gap:12px;min-width:0}
+.chat-header-user h3{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-header-user p{font-size:12px;color:var(--mute)}
+#back{display:none;margin-right:4px}
+
+.messages-box{flex:1;padding:24px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;background-size:cover;background-position:center;background-repeat:no-repeat;transition:all .3s ease}
+.message{max-width:65%;display:flex;flex-direction:column}
+.message.received{align-self:flex-start}
+.message.sent{align-self:flex-end}
+.who{font-size:12px;color:var(--mute);margin:0 8px 2px}
+.message-content{padding:12px 18px;border-radius:16px;font-size:14.5px;line-height:1.45;word-break:break-word;white-space:pre-wrap;box-shadow:0 2px 5px rgba(0,0,0,.2)}
+.message.received .message-content{background-color:var(--msg-in);color:var(--tx);border-bottom-left-radius:2px;border:1px solid var(--line)}
+.message.sent .message-content{background-color:var(--msg-out);color:#ffffff;border-bottom-right-radius:2px}
+.message.sent .message-content.img,.message.received .message-content.img{background:transparent;box-shadow:none;padding:0;border:none}
+.message-content img{max-width:100%;border-radius:12px;display:block;cursor:zoom-in}
+.message-content audio{height:36px;max-width:100%}
+
+.chat-input-area{padding:16px 20px;background:var(--panel);border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;flex:none}
+.chat-input-area input{flex:1;padding:12px 18px;border-radius:50px;border:1px solid var(--line);background-color:var(--chat-bg);font-size:15px;outline:none}
+.send-btn{background:var(--acc);border:none;color:#fff;width:42px;height:42px;border-radius:50%;cursor:pointer;display:grid;place-items:center;flex:none}
+
+.sidebar{width:360px;border-left:1px solid var(--line);display:flex;flex-direction:column;background:var(--panel);flex:none;min-height:0}
+.sidebar-header{padding:18px 20px;display:flex;justify-content:space-between;align-items:center}
+.sidebar-header h2{font-size:22px;font-weight:700}
+.header-actions{display:flex;align-items:center;gap:6px}
+.icon-btn{background:none;border:none;font-size:17px;color:var(--mute);cursor:pointer;width:38px;height:38px;border-radius:50%;transition:all .2s;display:grid;place-items:center;flex:none}
+.icon-btn:hover{background:var(--line);color:#fff}
+.icon-btn.rec{background:var(--err);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.55}}
+
+.me-row{display:flex;align-items:center;gap:12px;padding:10px 14px;margin:0 12px 12px;border-radius:12px;background:var(--chat-bg);border:1px solid var(--line);cursor:pointer;transition:background .2s}
+.me-row:hover{background:var(--line)}
+.me-txt{min-width:0;flex:1}
+.me-txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-weight:600}
+.me-edit{color:var(--mute);font-size:14px}
+.uid{color:var(--online);font-weight:700;letter-spacing:1px}
+
+.search-box{padding:0 16px 12px 16px;display:flex;gap:8px;align-items:center}
+.search-box input{border-radius:50px}
+#found{padding:0 16px 12px}
+.card{display:flex;gap:10px;align-items:center;background:var(--chat-bg);border-radius:12px;padding:10px;border:1px solid var(--line)}
+.card span{flex:1;min-width:0}
+
+.chat-list{flex:1;overflow-y:auto;padding:0 8px}
+.chat-item{display:flex;align-items:center;padding:12px;cursor:pointer;border-radius:10px;margin-bottom:4px;transition:background .2s}
+.chat-item:hover,.chat-item.active{background-color:var(--line)}
+.chat-info{flex:1;min-width:0;margin-left:12px}
+.chat-info h4{font-size:15px;font-weight:600;color:var(--tx)}
+.chat-info p{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.chat-item.un h4,.chat-item.un p{color:#fff;font-weight:700}
+.chat-item .dot{width:10px;height:10px;border-radius:50%;background:var(--online);flex:none;margin-left:8px}
+.empty{margin:auto;color:var(--mute);text-align:center;padding:20px}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.7);display:grid;place-items:center;z-index:100;padding:16px;backdrop-filter:blur(4px)}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:min(420px,100%);max-height:90vh;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 16px 32px rgba(0,0,0,.6)}
+.modal-head{display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-size:18px;font-weight:700}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.fld{font-size:13px;font-weight:500;color:var(--mute)}
+.hint{font-size:12px;color:var(--mute)}
+.info-row{display:flex;align-items:center;gap:8px;background:var(--chat-bg);border-radius:10px;padding:10px 14px;border:1px solid var(--line)}
+.info-row span{color:var(--mute);flex:none}
+.info-row b{flex:1;min-width:0;text-align:right;overflow-wrap:anywhere;font-weight:600}
+.av-wrap{position:relative;width:96px;margin:0 auto}
+.cam-badge{position:absolute;right:0;bottom:0;width:30px;height:30px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:13px;border:2px solid var(--panel);pointer-events:none}
+
+.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:6px}
+.theme-opt{height:36px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .2s}
+.theme-opt:hover{transform:scale(1.08)}
+.theme-opt.active{border-color:#fff}
+
+#chMems{display:grid;gap:10px;margin-top:8px}
+.mem{display:flex;align-items:center;gap:12px}
+.mem-body{flex:1;min-width:0}
+.mem-body input{padding:8px 12px}
+.mem-body small{display:block;margin-top:2px;font-size:12px;color:var(--mute)}
+#cAv,#cName{cursor:pointer}
+#lb{position:fixed;inset:0;background:#0009;display:grid;place-items:center;z-index:200;cursor:zoom-out}
+#lb img{max-width:96%;max-height:96%;border-radius:8px}
+
+@media(max-width:768px){
+ .messenger-container{height:100%;border-radius:0;box-shadow:none;width:100%;border:none}
+ .sidebar{width:100%;border-left:0}
+ .chat-area{display:none}
+ body.inchat .sidebar{display:none}
+ body.inchat .chat-area{display:flex}
+ #back{display:grid}
+ .message{max-width:85%}
+}
+</style>
+</head>
+<body class="theme-default">
+
+<div id="vLogin" class="view" hidden><div class="center">
+  <div class="logo">ĐẠT AP</div>
+  <p class="sub">Hệ thống nhắn tin bảo mật Slate Chat.</p>
+  <h2 class="reg-only" style="font-size:20px">Tạo tài khoản mới</h2>
+  <input id="email" type="text" placeholder="Tên tài khoản (chữ thường, không dấu)" autocomplete="username" autocapitalize="none" spellcheck="false">
+  <input id="pass" type="password" placeholder="Mật khẩu (từ 6 ký tự)" autocomplete="current-password">
+  <input id="pass2" class="reg-only" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password">
+  <button id="inBtn" class="log-only">Đăng nhập</button>
+  <button id="upBtn" class="reg-only">Tạo tài khoản</button>
+  <p class="err" id="loginErr"></p>
+  <button id="toReg" class="link log-only">Chưa có tài khoản? Tạo tài khoản</button>
+  <button id="toLog" class="link reg-only">Đã có tài khoản? Quay lại đăng nhập</button>
+</div></div>
+
+<div id="vProfile" class="view" hidden><div class="center">
+  <div class="logo">Hồ sơ cá nhân</div>
+  <label class="av big" id="avPick" tabindex="0">+</label>
+  <input id="avFile" type="file" accept="image/*" hidden>
+  <p class="sub">Bấm vòng tròn để chọn ảnh đại diện</p>
+  <input id="name" placeholder="Tên hiển thị" maxlength="30">
+  <button id="saveProfile">Lưu và tiếp tục</button>
+  <p class="err" id="profErr"></p>
+</div></div>
+
+<div id="vPin" class="view" hidden><div class="center">
+  <div class="logo">ĐẠT AP</div>
+  <p id="pinTitle">Nhập mã PIN</p>
+  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
+  <input id="pinIn" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+  <p class="err" id="pinErr"></p>
+  <button class="ghost" id="forgot">Quên PIN? Đăng xuất</button>
+</div></div>
+
+<div id="vMain" class="view messenger-container" hidden>
+  <section class="chat-area" id="chat">
+    <div class="empty" id="noChat">Vui lòng chọn một cuộc trò chuyện để bắt đầu nhắn tin.</div>
+    <header class="chat-header" id="chatHead" hidden>
+      <div class="chat-header-user">
+        <button class="icon-btn" id="back"><i class="fa-solid fa-chevron-left"></i></button>
+        <div class="av-container">
+          <div class="av" id="cAv"></div>
+          <div class="online-dot" id="cDot"></div>
+        </div>
+        <div>
+          <h3 id="cName"></h3>
+          <p id="cStatus">Đang ngoại tuyến</p>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="icon-btn" id="themeBtn" title="Đổi chủ đề đoạn chat"><i class="fa-solid fa-palette"></i></button>
+        <button class="icon-btn" id="infoBtn" title="Thông tin cuộc trò chuyện"><i class="fa-solid fa-circle-info"></i></button>
+      </div>
+    </header>
+    
+    <div class="messages-box" id="msgs" hidden></div>
+    
+    <form class="chat-input-area" id="send" hidden>
+      <button type="button" class="icon-btn" id="camBtn" title="Chụp ảnh"><i class="fa-solid fa-camera"></i></button>
+      <button type="button" class="icon-btn" id="imgBtn" title="Gửi hình ảnh"><i class="fa-solid fa-image"></i></button>
+      <button type="button" class="icon-btn" id="micBtn" title="Ghi âm"><i class="fa-solid fa-microphone"></i></button>
+      <input id="txt" type="text" placeholder="Nhập tin nhắn..." autocomplete="off">
+      <button type="submit" class="send-btn" title="Gửi"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+  </section>
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Đoạn chat</h2>
+      <div class="header-actions">
+        <button class="icon-btn" id="menuBtn" title="Cài đặt hệ thống"><i class="fa-solid fa-bars"></i></button>
+      </div>
+    </div>
+
+    <div class="me-row" id="meRow" role="button" title="Xem và chỉnh sửa tài khoản">
+      <div class="av-container">
+        <div class="av" id="meAv"></div>
+        <div class="online-dot on"></div>
+      </div>
+      <div class="me-txt">
+        <b id="meName"></b>
+        <span class="sub">UID: </span><span class="uid" id="meUid"></span>
+      </div>
+      <i class="fa-solid fa-pen me-edit"></i>
+    </div>
+
+    <div class="search-box">
+      <input id="q" inputmode="numeric" maxlength="5" placeholder="Tìm bạn bằng UID 5 số...">
+      <button class="icon-btn" id="qBtn"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+    
+    <div id="found" hidden></div>
+    <div class="chat-list" id="list"></div>
+  </aside>
+
+  <input id="fCam" type="file" accept="image/*" capture="environment" hidden>
+  <input id="fImg" type="file" accept="image/*" hidden>
+</div>
+
+<div id="mMenu" class="modal-back" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Cài đặt & Tùy chọn</h3>
+      <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div style="display:grid;gap:10px">
+      <button class="ghost" id="mGrpBtn" style="text-align:left"><i class="fa-solid fa-user-group"></i> Tạo nhóm kín mới</button>
+      <button class="ghost" id="mNotiBtn" style="text-align:left"><i class="fa-solid fa-bell"></i> Bật thông báo tin nhắn</button>
+      <button class="ghost" id="mLockBtn" style="text-align:left"><i class="fa-solid fa-lock"></i> Khóa ứng dụng ngay</button>
+      <button class="ghost" id="mOutBtn" style="text-align:left;color:var(--err)"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất tài khoản</button>
+    </div>
+  </div>
+</div>
+
+<div id="mTheme" class="modal-back" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Chủ đề đoạn chat</h3>
+      <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p class="fld">Chọn 1 trong 5 phối màu chủ đề bên dưới:</p>
+    <div class="theme-grid">
+      <div class="theme-opt active" style="background:#3b4252" onclick="setTheme('default')"></div>
+      <div class="theme-opt" style="background:#007799" onclick="setTheme('neon')"></div>
+      <div class="theme-opt" style="background:#5b2c6f" onclick="setTheme('purple')"></div>
+      <div class="theme-opt" style="background:#1e5631" onclick="setTheme('emerald')"></div>
+      <div class="theme-opt" style="background:#7b1fa2" onclick="setTheme('rose')"></div>
+    </div>
+    <p class="fld" style="margin-top:10px">Hoặc tải hình nền custom từ máy tính:</p>
+    <input type="file" id="bgFileInput" accept="image/*">
+  </div>
+</div>
+
+<div id="mAcc" class="modal-back" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Tài khoản của bạn</h3>
+      <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="av-wrap">
+      <label class="av big" id="accAv" tabindex="0"></label>
+      <span class="cam-badge"><i class="fa-solid fa-camera"></i></span>
+    </div>
+    <input id="accFile" type="file" accept="image/*" hidden>
+    <button class="link" id="accDelPhoto" type="button" style="align-self:center">Xóa ảnh đại diện</button>
+    
+    <label class="fld" for="accName">Tên hiển thị</label>
+    <input id="accName" maxlength="30" placeholder="Tên của bạn">
+    <p class="hint">Đổi tên hoặc ảnh ở đây, tất cả bạn bè trong danh sách chat đều sẽ cập nhật và nhìn thấy ngay lập tức.</p>
+    
+    <div class="info-row"><span>Tên tài khoản</span><b id="accId"></b></div>
+    <div class="info-row"><span>UID</span><b id="accUid"></b><button class="icon-btn" id="accCopy" type="button"><i class="fa-regular fa-copy"></i></button></div>
+    <p class="err" id="accErr"></p>
+    <div class="modal-actions">
+      <button class="ghost" data-close type="button">Hủy</button>
+      <button id="accSave" type="button">Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
+<div id="mChat" class="modal-back" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="chTitle"></h3>
+      <button class="icon-btn" data-close><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="av big" id="chAv" style="cursor:default"></div>
+    <div style="text-align:center"><h3 id="chReal"></h3><p class="sub" id="chSub"></p></div>
+    <label class="fld" for="chNick" id="chNickLbl"></label>
+    <input id="chNick" maxlength="30" autocomplete="off">
+    <div id="chMemWrap"><p class="fld">Biệt danh thành viên</p><div id="chMems"></div></div>
+    <p class="err" id="chErr"></p>
+    <div class="modal-actions">
+      <button class="ghost" data-close type="button">Hủy</button>
+      <button id="chSave" type="button">Lưu biệt danh</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBiHGck_9Le0HkVSsEjdxLQDf_oALYC5nM",
+  authDomain: "ungdungnhantin-57e8d.firebaseapp.com",
+  projectId: "ungdungnhantin-57e8d",
+  storageBucket: "ungdungnhantin-57e8d.firebasestorage.app",
+  messagingSenderId: "739057110706",
+  appId: "1:739057110706:web:3b5445120ccb993d1483ab",
+  measurementId: "G-8C2BEJ79ZP"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore(), TS = firebase.firestore.FieldValue.serverTimestamp;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const show = id => document.querySelectorAll('.view').forEach(v => v.hidden = v.id !== id);
+const cache = {};
+let me = null, profile = null, cur = null, unsubMsgs = null, unsubChats = null, started = false, tmpPin = null, hiddenAt = 0;
+let myNicks = {}, unsubMe = null; const userSubs = {};
+
+const avHtml = (u, isOnline = false) => {
+  const content = u && u.photo ? `<img class="avatar av" src="${u.photo}" alt="">` : `<div class="avatar av">${esc((u && u.name || '?')[0]).toUpperCase()}</div>`;
+  return `<div class="av-container">${content}<div class="online-dot ${isOnline ? 'on' : ''}"></div></div>`;
+};
+
+const setAv = (el, u) => {
+  el.innerHTML = ''; el.style.background = '';
+  if (u && u.photo) { el.innerHTML = `<img src="${u.photo}" style="width:100%;height:100%;object-fit:cover" alt="">`; }
+  else el.textContent = ((u && u.name) || '?')[0].toUpperCase();
+};
+
+function resize(file, max, q) {
+  return new Promise((ok, no) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = img.width * r; c.height = img.height * r;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src); ok(c.toDataURL('image/jpeg', q));
+    };
+    img.onerror = no; img.src = URL.createObjectURL(file);
+  });
+}
+const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
+
+const nk = uid => uid.replace(/\./g, '~'), gk = id => 'grp:' + id;
+const nickOf = k => String(myNicks[k] || '').trim();
+const realName = uid => (cache[uid] || {}).name || 'Người dùng';
+const uName = uid => nickOf(nk(uid)) || realName(uid);
+const peerOf = c => c.members.find(x => x !== me.uid);
+const gName = c => nickOf(gk(c.id)) || c.name || 'Nhóm';
+const chatName = c => c.isGroup ? gName(c) : uName(peerOf(c));
+
+async function getUser(uid) {
+  if (!cache[uid]) { 
+    const s = await db.collection('users').doc(uid).get(); 
+    cache[uid] = s.exists ? s.data() : { name: 'Người dùng' }; 
+  }
+  return cache[uid];
+}
+
+function setOnlineStatus(online) {
+  if (me && me.uid) {
+    db.collection('users').doc(me.uid).set({ online, lastSeen: TS() }, { merge: true });
+  }
+}
+window.addEventListener('online', () => setOnlineStatus(true));
+window.addEventListener('offline', () => setOnlineStatus(false));
+
+const SESSION = 'datap_session';
+const msg = (t, ok) => { const e = $('#loginErr'); e.textContent = t || ''; e.className = ok ? 'ok' : 'err'; };
+const setMode = reg => { $('#vLogin').classList.toggle('reg', reg); $('#pass').value = ''; $('#pass2').value = ''; msg(''); };
+const validId = s => /^[a-z0-9._]{3,30}$/.test(s);
+const hex = u8 => [...u8].map(b => b.toString(16).padStart(2, '0')).join('');
+
+async function hashPw(pw, salt) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return hex(new Uint8Array(bits));
+}
+
+$('#inBtn').onclick = async () => {
+  const id = $('#email').value.trim().toLowerCase(), pw = $('#pass').value;
+  if (!id || !pw) return msg('Hãy nhập tài khoản và mật khẩu.');
+  try {
+    const s = await db.collection('accounts').doc(id).get();
+    if (!s.exists || s.data().hash !== await hashPw(pw, s.data().salt)) return msg('Sai tài khoản hoặc mật khẩu.');
+    localStorage.setItem(SESSION, id);
+    await startSession(id);
+  } catch (e) { msg(e.message); }
+};
+
+$('#upBtn').onclick = async () => {
+  const id = $('#email').value.trim().toLowerCase(), pw = $('#pass').value;
+  if (!validId(id)) return msg('Tên tài khoản từ 3-30 ký tự không dấu.');
+  if (pw.length < 6) return msg('Mật khẩu phải từ 6 ký tự.');
+  if (pw !== $('#pass2').value) return msg('Hai mật khẩu không khớp.');
+  try {
+    const ref = db.collection('accounts').doc(id), salt = hex(crypto.getRandomValues(new Uint8Array(16))), hash = await hashPw(pw, salt);
+    const ok = await db.runTransaction(async t => { if ((await t.get(ref)).exists) return false; t.set(ref, { salt, hash }); return true; });
+    if (!ok) return msg('Tài khoản đã tồn tại.');
+    setMode(false); $('#email').value = id;
+    msg('Tạo tài khoản thành công! Hãy đăng nhập.', true);
+  } catch (e) { msg(e.message); }
+};
+$('#toReg').onclick = () => setMode(true);
+$('#toLog').onclick = () => setMode(false);
+
+async function startSession(id) {
+  me = { uid: id };
+  setOnlineStatus(true);
+  const s = await db.collection('users').doc(id).get();
+  if (s.exists && s.data().name && s.data().code) { profile = s.data(); myNicks = profile.nicks || {}; cache[id] = profile; askPin(); }
+  else { profile = s.exists ? s.data() : { name: '', photo: '' }; fillProfile(); show('vProfile'); }
+}
+
+function logout() {
+  setOnlineStatus(false);
+  localStorage.removeItem(SESSION); cleanup(); me = null;
+  Object.keys(cache).forEach(k => delete cache[k]);
+  setMode(false); show('vLogin');
+}
+
+function fillProfile() { $('#name').value = profile.name || ''; setAv($('#avPick'), profile); }
+$('#avPick').onclick = () => $('#avFile').click();
+$('#avFile').onchange = async e => { if (e.target.files[0]) { profile.photo = await resize(e.target.files[0], 256, .8); setAv($('#avPick'), profile); } };
+
+async function makeCode(uid) {
+  for (let i = 0; i < 25; i++) {
+    const c = String(10000 + Math.floor(Math.random() * 90000)), ref = db.collection('codes').doc(c);
+    const ok = await db.runTransaction(async t => { if ((await t.get(ref)).exists) return false; t.set(ref, { uid }); return true; });
+    if (ok) return c;
+  }
+  throw new Error('Không tạo được UID.');
+}
+
+$('#saveProfile').onclick = async () => {
+  const name = $('#name').value.trim();
+  if (!name) return $('#profErr').textContent = 'Hãy nhập tên hiển thị.';
+  try {
+    profile.name = name; profile.uid = me.uid; profile.online = true;
+    if (!profile.code) profile.code = await makeCode(me.uid);
+    await db.collection('users').doc(me.uid).set(profile);
+    cache[me.uid] = profile; askPin();
+  } catch (e) { $('#profErr').textContent = e.message; }
+};
+
+const pinKey = () => 'datap_pin_' + me.uid;
+function askPin() {
+  const has = localStorage.getItem(pinKey());
+  $('#pinTitle').textContent = has ? 'Nhập mã PIN để mở' : 'Tạo mã PIN 4 số';
+  tmpPin = null; $('#pinIn').value = ''; $('#pinErr').textContent = ''; dots(0);
+  show('vPin'); setTimeout(() => $('#pinIn').focus(), 50);
+}
+const dots = n => document.querySelectorAll('#dots i').forEach((d, i) => d.classList.toggle('on', i < n));
+
+$('#pinIn').oninput = async e => {
+  const v = e.target.value.replace(/\D/g, '').slice(0, 4); e.target.value = v; dots(v.length);
+  if (v.length < 4) return;
+  const h = await sha(me.uid + ':' + v), saved = localStorage.getItem(pinKey());
+  if (!saved) {
+    if (!tmpPin) { tmpPin = v; e.target.value = ''; dots(0); $('#pinTitle').textContent = 'Nhập lại PIN để xác nhận'; return; }
+    if (tmpPin !== v) { tmpPin = null; $('#pinTitle').textContent = 'Tạo mã PIN 4 số'; return; }
+    localStorage.setItem(pinKey(), h); enter();
+  } else if (saved === h) enter();
+};
+$('#forgot').onclick = () => { if (me) localStorage.removeItem(pinKey()); logout(); };
+
+$('#themeBtn').onclick = () => $('#mTheme').hidden = false;
+function setTheme(t) {
+  document.body.className = 'theme-' + t;
+  document.querySelectorAll('.theme-opt').forEach(el => el.classList.remove('active'));
+  $('#msgs').style.backgroundImage = 'none';
+  $('#mTheme').hidden = true;
+}
+$('#bgFileInput').onchange = e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      $('#msgs').style.backgroundImage = `url('${evt.target.result}')`;
+    };
+    reader.readAsDataURL(file);
+    $('#mTheme').hidden = true;
+  }
+};
+
+$('#menuBtn').onclick = () => $('#mMenu').hidden = false;
+$('#mGrpBtn').onclick = () => { $('#mMenu').hidden = true; createGroup(); };
+$('#mNotiBtn').onclick = () => { $('#mMenu').hidden = true; enableNoti(); };
+$('#mLockBtn').onclick = () => { $('#mMenu').hidden = true; askPin(); };
+$('#mOutBtn').onclick = () => { $('#mMenu').hidden = true; logout(); };
+
+async function createGroup() {
+  const name = (prompt('Tên nhóm kín:') || '').trim(); if (!name) return;
+  const codes = (prompt('Nhập UID 5 số của các thành viên (phân cách bằng dấu phẩy):') || '').split(/[\s,]+/).filter(x => /^\d{5}$/.test(x));
+  const ids = [me.uid];
+  for (const c of codes) { const u = await findByCode(c); if (u && !ids.includes(u.uid)) ids.push(u.uid); }
+  if (ids.length < 2) return alert('Không tìm thấy thành viên nào hợp lệ.');
+  const ref = await db.collection('chats').add({ members: ids, isGroup: true, name, updatedAt: TS() });
+  openChat({ id: ref.id, members: ids, isGroup: true, name });
+}
+
+function renderMe() { setAv($('#meAv'), profile); $('#meName').textContent = profile.name; $('#meUid').textContent = profile.code; }
+function enter() {
+  show('vMain'); renderMe();
+  if (!started) { started = true; watchMe(); listenChats(); }
+}
+
+function cleanup() { 
+  unsubChats && unsubChats(); unsubMsgs && unsubMsgs(); unsubChats = unsubMsgs = null; 
+  unsubMe && unsubMe(); unsubMe = null; Object.keys(userSubs).forEach(k => { userSubs[k](); delete userSubs[k]; }); 
+  myNicks = {}; document.querySelectorAll('.modal-back').forEach(m => m.hidden = true); 
+  started = false; cur = null; $('#list').innerHTML = ''; closeChat(); 
+}
+
+$('#meUid').onclick = e => { e.stopPropagation(); navigator.clipboard && navigator.clipboard.writeText(profile.code); };
+
+async function findByCode(c) {
+  const s = await db.collection('codes').doc(c).get();
+  if (!s.exists) return null;
+  const uid = s.data().uid, us = await db.collection('users').doc(uid).get();
+  if (us.exists) cache[uid] = us.data();
+  return { uid, ...(await getUser(uid)) };
+}
+
+$('#qBtn').onclick = async () => {
+  const c = $('#q').value, box = $('#found'); box.hidden = false;
+  if (c.length !== 5) return box.innerHTML = '<p class="err">UID gồm 5 số.</p>';
+  if (c === profile.code) return box.innerHTML = '<p class="err">Đây là UID của bạn.</p>';
+  box.textContent = 'Đang tìm…';
+  const u = await findByCode(c);
+  if (!u) return box.innerHTML = '<p class="err">Không tìm thấy UID này.</p>';
+  box.innerHTML = `<div class="card">${avHtml(u, u.online)}<span><b>${esc(nickOf(nk(u.uid)) || u.name)}</b><br><small class="sub">UID ${esc(u.code)}</small></span><button id="addBtn">Kết bạn</button></div>`;
+  $('#addBtn').onclick = async () => {
+    const id = [me.uid, u.uid].sort().join('_');
+    await db.collection('chats').doc(id).set({ members: [me.uid, u.uid], isGroup: false }, { merge: true });
+    box.hidden = true; $('#q').value = '';
+    openChat({ id, members: [me.uid, u.uid], isGroup: false });
+  };
+};
+
+function renderChats() {
+  const list = $('#list'); list.innerHTML = lastChats.length ? '' : '<p class="empty">Chưa có cuộc trò chuyện nào.</p>';
+  lastChats.forEach(c => {
+    const peerId = c.members.find(x => x !== me.uid);
+    const o = c.isGroup ? { name: c.name } : cache[peerId] || { name: '?' };
+    const isOnline = !c.isGroup && cache[peerId] && cache[peerId].online;
+    const el = document.createElement('div');
+    el.className = 'chat-item' + (cur && cur.id === c.id ? ' active' : '');
+    el.innerHTML = `${c.isGroup ? `<div class="av">👥</div>` : avHtml(o, isOnline)}<div class="chat-info"><h4>${esc(chatName(c))}</h4><p>${esc(c.last || 'Bắt đầu trò chuyện')}</p></div>`;
+    el.onclick = () => openChat(c);
+    list.appendChild(el);
+  });
+}
+
+function listenChats() {
+  unsubChats = db.collection('chats').where('members', 'array-contains', me.uid).onSnapshot(async snap => {
+    lastChats = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    await Promise.all(lastChats.flatMap(c => c.members).map(getUser));
+    watchUsers(lastChats.flatMap(c => c.members));
+    renderChats();
+  });
+}
+
+function closeChat() {
+  document.body.classList.remove('inchat'); unsubMsgs && unsubMsgs(); unsubMsgs = null;
+  ['#chatHead', '#msgs', '#send'].forEach(s => $(s).hidden = true); $('#noChat').hidden = false;
+}
+$('#back').onclick = closeChat;
+
+async function openChat(c) {
+  cur = c; unsubMsgs && unsubMsgs();
+  await Promise.all(c.members.map(getUser));
+  renderChats(); refreshHeader();
+  $('#noChat').hidden = true; ['#chatHead', '#msgs', '#send'].forEach(s => $(s).hidden = false);
+  $('#send').style.display = 'flex'; document.body.classList.add('inchat');
+  
+  unsubMsgs = db.collection('chats').doc(c.id).collection('messages').orderBy('t').limitToLast(100).onSnapshot(snap => {
+    const box = $('#msgs'); box.innerHTML = '';
+    snap.docs.forEach(d => {
+      const m = d.data(), mine = m.from === me.uid;
+      const wrap = document.createElement('div'); wrap.className = 'message ' + (mine ? 'sent' : 'received');
+      if (c.isGroup && !mine) { const w = document.createElement('span'); w.className = 'who'; w.textContent = cache[m.from] ? uName(m.from) : ''; wrap.appendChild(w); }
+      const el = document.createElement('div'); el.className = 'message-content';
+      if (m.type === 'img') { el.classList.add('img'); el.innerHTML = `<img src="${m.data}" alt="Hình ảnh">`; el.firstChild.onclick = () => lightbox(m.data); }
+      else if (m.type === 'audio') el.innerHTML = `<audio controls src="${m.data}"></audio>`;
+      else el.textContent = m.text;
+      wrap.appendChild(el); box.appendChild(wrap);
+    });
+    box.scrollTop = box.scrollHeight;
+  });
+}
+
+function lightbox(src) {
+  const d = document.createElement('div'); d.id = 'lb'; d.innerHTML = `<img src="${src}" alt="">`; d.onclick = () => d.remove(); document.body.appendChild(d);
+}
+
+async function sendMsg(m) {
+  if (!cur) return;
+  const ref = db.collection('chats').doc(cur.id);
+  await ref.collection('messages').add({ from: me.uid, ...m, t: TS() });
+  await ref.update({ last: m.type === 'text' ? m.text.slice(0, 60) : m.type === 'img' ? '📷 Hình ảnh' : '🎤 Tin nhắn thoại', lastFrom: me.uid, updatedAt: TS() });
+}
+
+$('#send').onsubmit = e => { e.preventDefault(); const t = $('#txt').value.trim(); if (t) { $('#txt').value = ''; sendMsg({ type: 'text', text: t }); } };
+
+$('#camBtn').onclick = () => $('#fCam').click();
+$('#imgBtn').onclick = () => $('#fImg').click();
+[$('#fCam'), $('#fImg')].forEach(f => f.onchange = async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  sendMsg({ type: 'img', data: await resize(file, 900, .7) });
+});
+
+let rec = null, chunks = [], stopTimer = null;
+$('#micBtn').onclick = async () => {
+  if (rec) return rec.stop();
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    rec = new MediaRecorder(stream); chunks = [];
+    rec.ondataavailable = e => chunks.push(e.data);
+    rec.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(chunks, { type: rec.mimeType }), fr = new FileReader();
+      fr.onload = () => sendMsg({ type: 'audio', data: fr.result });
+      fr.readAsDataURL(blob); rec = null;
+    };
+    rec.start();
+  } catch (e) { alert('Micro bị chặn.'); }
+};
+
+function refreshHeader() {
+  if (!cur) return;
+  $('#cName').textContent = chatName(cur);
+  if (cur.isGroup) {
+    $('#cAv').textContent = '👥'; $('#cDot').className = 'online-dot'; $('#cStatus').textContent = cur.members.length + ' thành viên';
+  } else {
+    const peerId = peerOf(cur), peer = cache[peerId];
+    setAv($('#cAv'), peer);
+    const isOnline = peer && peer.online;
+    $('#cDot').className = 'online-dot ' + (isOnline ? 'on' : '');
+    $('#cStatus').textContent = isOnline ? 'Đang hoạt động' : 'Đã ngoại tuyến';
+  }
+}
+
+function refreshUI() {
+  if (!me || !profile) return;
+  renderMe(); renderChats(); refreshHeader();
+}
+
+function watchMe() {
+  unsubMe = db.collection('users').doc(me.uid).onSnapshot(s => {
+    if (!s.exists) return;
+    profile = s.data(); cache[me.uid] = profile; myNicks = profile.nicks || {};
+    refreshUI();
+  });
+}
+
+function watchUsers(uids) {
+  uids.forEach(uid => {
+    if (uid === me.uid || userSubs[uid]) return;
+    userSubs[uid] = db.collection('users').doc(uid).onSnapshot(s => {
+      if (!s.exists) return;
+      cache[uid] = s.data(); refreshUI();
+    });
+  });
+}
+
+document.querySelectorAll('.modal-back').forEach(m => m.addEventListener('click', e => {
+  if (e.target === m || e.target.closest('[data-close]')) m.hidden = true;
+}));
+
+let accPhoto = '';
+function drawAccAv() {
+  setAv($('#accAv'), { name: $('#accName').value.trim() || profile.name, photo: accPhoto });
+  $('#accDelPhoto').hidden = !accPhoto;
+}
+
+$('#meRow').onclick = () => {
+  if (!me || !profile) return;
+  accPhoto = profile.photo || '';
+  $('#accName').value = profile.name || ''; $('#accErr').textContent = '';
+  $('#accId').textContent = me.uid; $('#accUid').textContent = profile.code;
+  drawAccAv(); $('#mAcc').hidden = false;
+};
+
+$('#accName').oninput = drawAccAv;
+$('#accAv').onclick = () => $('#accFile').click();
+$('#accFile').onchange = async e => {
+  const f = e.target.files[0]; if (f) { accPhoto = await resize(f, 256, .8); drawAccAv(); }
+};
+$('#accDelPhoto').onclick = () => { accPhoto = ''; drawAccAv(); };
+
+$('#accSave').onclick = async () => {
+  const name = $('#accName').value.trim();
+  if (!name) return $('#accErr').textContent = 'Hãy nhập tên hiển thị.';
+  try {
+    await db.collection('users').doc(me.uid).set({ name, photo: accPhoto }, { merge: true });
+    profile.name = name; profile.photo = accPhoto; cache[me.uid] = profile;
+    refreshUI(); $('#mAcc').hidden = true;
+  } catch (e) { $('#accErr').textContent = e.message; }
+};
+
+$('#infoBtn').onclick = $('#cAv').onclick = $('#cName').onclick = () => {
+  if (!cur) return;
+  const c = cur, g = c.isGroup, peer = g ? null : peerOf(c), real = g ? (c.name || 'Nhóm') : realName(peer);
+  $('#chTitle').textContent = g ? 'Thông tin nhóm' : 'Thông tin cuộc trò chuyện';
+  const av = $('#chAv'); if (g) { av.innerHTML = ''; av.textContent = '👥'; } else setAv(av, cache[peer]);
+  $('#chReal').textContent = real;
+  $('#chSub').textContent = g ? c.members.length + ' thành viên' : 'UID ' + ((cache[peer] || {}).code || '');
+  $('#chNickLbl').textContent = g ? 'Biệt danh nhóm' : 'Biệt danh người này';
+  const ni = $('#chNick'); ni.dataset.key = g ? gk(c.id) : nk(peer); ni.value = nickOf(ni.dataset.key);
+  $('#chMemWrap').hidden = !g;
+  const mems = $('#chMems'); mems.innerHTML = '';
+  if (g) c.members.filter(x => x !== me.uid).forEach(uid => {
+    const u = cache[uid] || {}, row = document.createElement('div'); row.className = 'mem';
+    row.innerHTML = `${avHtml(u, u.online)}<div class="mem-body"><input maxlength="30" data-key="${esc(nk(uid))}" value="${esc(nickOf(nk(uid)))}"><small>${esc(realName(uid))}</small></div>`;
+    mems.appendChild(row);
+  });
+  $('#mChat').hidden = false;
+};
+
+$('#chSave').onclick = async () => {
+  const ins = [$('#chNick'), ...document.querySelectorAll('#chMems input')], patch = {}, next = { ...myNicks };
+  ins.forEach(i => {
+    const k = i.dataset.key, v = i.value.trim();
+    if (v === nickOf(k)) return;
+    patch[k] = v || firebase.firestore.FieldValue.delete();
+    if (v) next[k] = v; else delete next[k];
+  });
+  if (!Object.keys(patch).length) return $('#mChat').hidden = true;
+  try {
+    await db.collection('users').doc(me.uid).set({ nicks: patch }, { merge: true });
+    myNicks = next; profile.nicks = next; refreshUI(); $('#mChat').hidden = true;
+  } catch (e) { $('#chErr').textContent = e.message; }
+};
+
+const saved = localStorage.getItem(SESSION);
+if (saved) startSession(saved).catch(() => logout()); else show('vLogin');
+</script>
+</body>
+</html>
